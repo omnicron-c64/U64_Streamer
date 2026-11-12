@@ -1,0 +1,8 @@
+.venv/
+.build-venv-*/
+__pycache__/
+build/
+dist/
+*.mp4
+*.mkv
+/Bonus_Level-1-*.png

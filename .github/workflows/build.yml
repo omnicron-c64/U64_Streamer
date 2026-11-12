@@ -1,0 +1,70 @@
+name: Build release archives
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Version tag to publish (leave blank to build only)
+        type: string
+        default: ""
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          architecture: x64
+      - run: ./build_windows.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UCI-Capture-Windows-x64
+          path: dist/UCI-Capture-windows-*.zip
+          if-no-files-found: error
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y python3-venv python3-tk binutils
+      - run: bash build_linux.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UCI-Capture-Linux-x64
+          path: dist/UCI-Capture-linux-*.tar.gz
+          if-no-files-found: error
+
+  release:
+    if: (github.event_name == 'workflow_dispatch' && inputs.release_tag != '') || (github.ref == 'refs/heads/main' && github.event.head_commit.message == 'Release v1.0.0')
+    needs: [windows, linux]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+      - name: Publish both verified archives
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag || 'v1.0.0' }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test -s LICENSE
+          cd release-assets
+          shopt -s failglob
+          archives=(UCI-Capture-windows-*.zip UCI-Capture-linux-*.tar.gz)
+          sha256sum "${archives[@]}" > SHA256SUMS.txt
+          gh release create "$RELEASE_TAG" "${archives[@]}" SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "UCI Capture ${RELEASE_TAG#v}" --notes-file ../RELEASE_NOTES.md

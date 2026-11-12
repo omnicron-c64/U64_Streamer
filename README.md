@@ -133,4 +133,3 @@ Other operating systems require testing.
 
 UCI Capture is licensed under the GNU General Public License, version 3 or any
 later version. See [LICENSE](LICENSE) and [third-party notices](THIRD_PARTY.md).
-
