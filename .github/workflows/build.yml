@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   windows:
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -61,6 +61,10 @@ jobs:
           set -euo pipefail
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           test -s LICENSE
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "$RELEASE_TAG already exists."
+            exit 0
+          fi
           cd release-assets
           shopt -s failglob
           archives=(UCI-Capture-windows-*.zip UCI-Capture-linux-*.tar.gz)
